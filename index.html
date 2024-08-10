@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Match Challenge</title>
+    <style>
+        #gameResult { margin-top: 20px; }
+        #revealWord { font-weight: bold; color: red; margin-top: 10px; }
+        #guesses { margin-top: 20px; }
+        #timer { font-weight: bold; color: blue; }
+        .guessItem { margin-bottom: 5px; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+    <h1>Word Match Challenge</h1>
+    <p>Guess the word before the time runs out!</p>
+
+    <!-- Input field for user to enter their word -->
+    <input type="text" id="userWord" placeholder="Enter your guess here" maxlength="3">
+    <button id="guessButton">Guess</button>
+
+    <div id="gameResult"></div>
+    <div id="lives">Lives: 3</div>
+    <div id="timer">Time Left: 2 minutes 0 seconds</div>
+    <div id="revealWord"></div>
+    <div id="guesses"></div>
+
+    <script>
+        let gameState = 0;
+        let lives = 3;
+        let timeLeft = 120; // Global timer set to 120 seconds (2 minutes)
+        let timerInterval;
+        let previousGuesses = [];
+        const words = ["cat", "dog", "man", "bat", "mat", "rat", "hat", "pat", "net", "jet"];
+        const chooser = Math.floor(Math.random() * words.length);
+        const cword = words[chooser];
+
+        console.log("Chosen word:", cword);  // Log the chosen word to the console
+
+        function countCommonLetters(arr1, arr2) {
+            let count = 0;
+            for (let i = 0; i < arr1.length; i++) {
+                if (arr2.includes(arr1[i])) {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        function areAnagrams(arr1, arr2) {
+            let sortedArr1 = arr1.slice().sort().join("");
+            let sortedArr2 = arr2.slice().sort().join("");
+            return sortedArr1 === sortedArr2;
+        }
+
+        function updateGameResult(message) {
+            document.getElementById('gameResult').textContent = message;
+        }
+
+        function updateLives() {
+            document.getElementById('lives').textContent = `Lives: ${lives}`;
+        }
+
+        function revealWord() {
+            document.getElementById('revealWord').textContent = `The correct word was: ${cword}`;
+        }
+
+        function addGuessToList(guess, result) {
+            const guessItem = document.createElement('div');
+            guessItem.className = 'guessItem';
+            guessItem.textContent = `You guessed "${guess}" - ${result}`;
+            document.getElementById('guesses').appendChild(guessItem);
+        }
+
+        function triggerConfetti() {
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 }
+            });
+        }
+
+        function endGame() {
+            clearInterval(timerInterval);  // Stop the timer
+            document.getElementById('guessButton').disabled = true;
+            document.getElementById('userWord').disabled = true;
+        }
+
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${minutes} minute${minutes !== 1 ? 's' : ''} ${remainingSeconds} second${remainingSeconds !== 1 ? 's' : ''}`;
+        }
+
+        function startGlobalTimer() {
+            timerInterval = setInterval(() => {
+                timeLeft--;
+
+                if (timeLeft > 0) {
+                    document.getElementById('timer').textContent = `Time Left: ${formatTime(timeLeft)}`;
+                } else {
+                    document.getElementById('timer').textContent = "Time Left: 0 seconds";
+                    updateGameResult("Time's up! Game Over.");
+                    revealWord();
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function validateInput(uword) {
+            if (!uword.match(/^[a-zA-Z]{3}$/)) {
+                updateGameResult("Please enter a 3-letter word.");
+                return false;
+            }
+            return true;
+        }
+      
+
+        function handleGuess(uword) {
+            if (previousGuesses.includes(uword)) {
+                updateGameResult("You've already guessed this word.");
+                return;
+            }
+            previousGuesses.push(uword);
+
+            const sCword = cword.split("");
+            const sUword = uword.split("");
+
+            let commonLetterCount = countCommonLetters(sCword, sUword);
+            let isAnagram = areAnagrams(sCword, sUword);
+            let resultMessage = "";
+
+            if (cword === uword) {
+                resultMessage = "Correct! You've guessed the word!";
+                updateGameResult(resultMessage);
+                triggerConfetti();  // Trigger confetti when the user wins
+                addGuessToList(uword, resultMessage);
+                endGame();  // Disable further input after correct guess
+            } else if (isAnagram) {
+                resultMessage = "All letters match but not in the correct order!";
+                updateGameResult(resultMessage);
+                lives--;
+                addGuessToList(uword, resultMessage);
+            } else if (commonLetterCount === 0) {
+                resultMessage = "No common letters found.";
+                updateGameResult(resultMessage);
+                lives--;
+                addGuessToList(uword, resultMessage);
+            } else {
+                resultMessage = `${commonLetterCount} letter${commonLetterCount > 1 ? 's' : ''} matched!`;
+                updateGameResult(resultMessage);
+                lives--;
+                addGuessToList(uword, resultMessage);
+            }
+
+            updateLives();
+
+            if (lives <= 0) {
+                updateGameResult("Game Over!");
+                revealWord(); // Reveal the word when the game is over
+                endGame();  // Disable further input when lives run out
+            }
+        }
+
+        document.getElementById('guessButton').addEventListener('click', () => {
+            const uword = document.getElementById('userWord').value.trim().toLowerCase(); // Get user input
+            if (!validateInput(uword)) return;
+
+            handleGuess(uword);
+        });
+
+        updateLives();
+        startGlobalTimer();  // Start the 2-minute timer when the game begins
+    </script>
+</body>
+</html>
